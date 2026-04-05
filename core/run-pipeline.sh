@@ -1,9 +1,9 @@
 #!/bin/bash
 
-php entropy.php
-sleep 2 #beri jeda 2 detik utk menghindari collison in case entropy.php belum selesai
-php dynamic-k.php
-sleep 2
-php threshold.php
-sleep 2
-php classification.php
+echo "Sistem Deteksi DDoS Aktif... [CTRL+C untuk berhenti]"
+
+while true
+do
+    php main-function.php
+    sleep 1
+done
