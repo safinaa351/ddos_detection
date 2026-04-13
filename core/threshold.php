@@ -5,7 +5,7 @@ require_once "../config.php";
 // AMBIL EV
 // =======================
 
-$N = 20;
+$N = 10;
 
 $result = $conn->query("
     SELECT normalized_entropy 

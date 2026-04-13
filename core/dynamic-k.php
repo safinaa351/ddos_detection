@@ -23,7 +23,7 @@ if ($ptotal == 0) {
 // AMBIL ENTROPY VECTOR (EV)
 // =======================
 
-$N = 20;
+$N = 10;
 
 $result = $conn->query("
     SELECT entropy 

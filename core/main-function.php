@@ -79,7 +79,117 @@ $stmt = $conn->prepare("INSERT INTO classification (timestamp, normalized_entrop
 $stmt->bind_param("sdds", $current_timestamp, $normalized_entropy, $threshold, $result_status);
 $stmt->execute();
 
-$conn->close();
-
 echo "Siklus Selesai: $current_timestamp | Status: $result_status | NE: $normalized_entropy | Thres: $threshold\n";
+
+// ==============================
+// 6. IDENTIFIKASI SUSIP (HANYA JIKA ATTACK)
+// ==============================
+$susip = [];
+
+if ($result_status == "ATTACK") {
+
+    // Urutkan IP berdasarkan request_count (desc)
+    usort($data, function($a, $b) {
+        return $b['request_count'] - $a['request_count'];
+    });
+
+    // Ambil semua IP dalam window
+    foreach ($data as $row) {
+        $p = $row['request_count'] / $total_requests;
+
+        $susip[] = [
+            'ip' => $row['ip_address'], // Pastikan key sesuai dengan output sliding-window.php (ip atau ip_address)
+            'request_count' => $row['request_count'],
+            'p' => $p
+        ];
+
+        // Simpan ke DB
+        $stmt = $conn->prepare("INSERT INTO suspicious_ip (timestamp, ip, request_count, probability) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("ssid", $current_timestamp, $row['ip_address'], $row['request_count'], $p);
+        $stmt->execute();
+    }
+}
+
+// ==============================
+// 7. HITUNG ENTROPY ESIP
+// ==============================
+$entropy_esip = 0;
+$total_susip_requests = 0;
+
+foreach ($susip as $s) {
+    $total_susip_requests += $s['request_count'];
+}
+
+if ($total_susip_requests > 0) {
+    foreach ($susip as $s) {
+        $p = $s['request_count'] / $total_susip_requests;
+        if ($p > 0) {
+            $entropy_esip -= $p * log($p, 2);
+        }
+    }
+}
+
+// ==============================
+// 8. HITUNG THRESHOLD ESIP (DINAMIS)
+// ==============================
+$esip_values = [];
+
+$result_esip = $conn->query("SELECT entropy_esip FROM reevaluation_log ORDER BY timestamp DESC LIMIT $N_window");
+
+while ($row = $result_esip->fetch_assoc()) {
+    $esip_values[] = $row['entropy_esip'];
+}
+
+$mean_esip = 0;
+$stddev_esip = 0;
+$threshold_esip = 0;
+
+if (count($esip_values) >= 2) {
+    $mean_esip = array_sum($esip_values) / count($esip_values);
+
+    $variance = 0;
+    foreach ($esip_values as $val) {
+        $variance += pow($val - $mean_esip, 2);
+    }
+
+    $stddev_esip = sqrt($variance / count($esip_values));
+
+    // pakai k_dynamic yang sama dari tahap awal
+    $threshold_esip = $mean_esip - ($k_dynamic * $stddev_esip);
+} else {
+    $threshold_esip = -1; //jika data kurang, set threshold negatif agar tidak mempengaruhi klasifikasi
+}
+
+// ==============================
+// 9. FINAL DECISION
+// ==============================
+$final_result = $result_status;
+
+// hanya reevaluate jika ada SUSIP
+if (!empty($susip) && $entropy_esip > 0) {
+
+    if ($entropy_esip < $threshold_esip) {
+        $final_result = "ATTACK";
+    } else {
+        $final_result = "NORMAL";
+    }
+}
+
+// ==============================
+// 10. SIMPAN REEVALUATION
+// ==============================
+$stmt = $conn->prepare("
+    INSERT INTO reevaluation_log 
+    (timestamp, entropy_esip, mean_esip, stddev_esip, threshold_esip, final_result) 
+    VALUES (?, ?, ?, ?, ?, ?)
+");
+$stmt->bind_param("sdddds", $current_timestamp, $entropy_esip, $mean_esip, $stddev_esip, $threshold_esip, $final_result);
+$stmt->execute();
+
+// update hasil klasifikasi final
+$stmt = $conn->prepare("UPDATE classification SET result = ? WHERE timestamp = ?");
+$stmt->bind_param("ss", $final_result, $current_timestamp);
+$stmt->execute();
+
+$conn->close();
 ?>
