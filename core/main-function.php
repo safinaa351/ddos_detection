@@ -32,16 +32,13 @@ $stmt->execute();
 
 // 3. HITUNG DYNAMIC K
 $N_window = 20;
-$result_ev = $conn->query("SELECT entropy FROM entropy_log ORDER BY timestamp DESC LIMIT $N_window");
-$ev = [];
-while ($row = $result_ev->fetch_assoc()) { $ev[] = $row['entropy']; }
 
-$emax = (!empty($ev)) ? max($ev) : 0;
+$emax = ($n > 0) ? log($n, 2) : 0;
 $k_dynamic = 0;
 if ($emax > 0 && $total_requests > 0) {
-    $numerator = pow(log(1 + $emax), 2);
+    $numerator = pow(log(1 + $emax), 2); //log() = log natural (ln), memang php-nya begini.
     $denominator = ($emax + $total_requests) * log(1 + $total_requests);
-    $k_dynamic = ($denominator != 0) ? ($numerator / $denominator) : 0;
+    $k_dynamic = ($numerator / $denominator);
 }
 
 // Simpan Dynamic K
@@ -72,72 +69,54 @@ $stmt->bind_param("sdddd", $current_timestamp, $mean, $stddev, $k_dynamic, $thre
 $stmt->execute();
 
 // 5. KLASIFIKASI
-$result_status = ($normalized_entropy < $threshold) ? "ATTACK" : "NORMAL";
+$result_status = ($normalized_entropy < $threshold) ? "SUS" : "NORMAL";
 
 // Simpan Hasil Klasifikasi
 $stmt = $conn->prepare("INSERT INTO classification (timestamp, normalized_entropy, threshold, result) VALUES (?, ?, ?, ?)");
 $stmt->bind_param("sdds", $current_timestamp, $normalized_entropy, $threshold, $result_status);
 $stmt->execute();
 
-echo "Siklus Selesai: $current_timestamp | Status: $result_status | NE: $normalized_entropy | Thres: $threshold\n";
+echo "TAHAP 1: $current_timestamp | NE: $normalized_entropy | Thres: $threshold | Status: $result_status\n";
 
 // ==============================
-// 6. IDENTIFIKASI SUSIP (HANYA JIKA ATTACK)
+// 6. IDENTIFIKASI SUSIP & HITUNG ESIP
 // ==============================
-$susip = [];
+$normalized_esip = 0;
+$filtered_susip = [];
 
-if ($result_status == "ATTACK") {
+if ($result_status == "SUS") {
+    // Ambil SEMUA IP dari window yang terdeteksi SUS
+    $filtered_susip = $data; 
+    $n_susip = count($filtered_susip);
+    $total_req_filtered = $total_requests; // Karena mengambil semua data dari window tsb
 
-    // Urutkan IP berdasarkan request_count (desc)
-    usort($data, function($a, $b) {
-        return $b['request_count'] - $a['request_count'];
-    });
-
-    // Ambil semua IP dalam window
-    foreach ($data as $row) {
-        $p = $row['request_count'] / $total_requests;
-
-        $susip[] = [
-            'ip' => $row['ip_address'], // Pastikan key sesuai dengan output sliding-window.php (ip atau ip_address)
-            'request_count' => $row['request_count'],
-            'p' => $p
-        ];
-
-        // Simpan ke DB
-        $stmt = $conn->prepare("INSERT INTO suspicious_ip (timestamp, ip, request_count, probability) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("ssid", $current_timestamp, $row['ip_address'], $row['request_count'], $p);
-        $stmt->execute();
-    }
-}
-
-// ==============================
-// 7. HITUNG ENTROPY ESIP
-// ==============================
-$entropy_esip = 0;
-$total_susip_requests = 0;
-
-foreach ($susip as $s) {
-    $total_susip_requests += $s['request_count'];
-}
-
-if ($total_susip_requests > 0) {
-    foreach ($susip as $s) {
-        $p = $s['request_count'] / $total_susip_requests;
-        if ($p > 0) {
-            $entropy_esip -= $p * log($p, 2);
+    if ($n_susip > 0) {
+        $temp_entropy = 0;
+        foreach ($filtered_susip as $s) {
+            $p_prime = $s['request_count'] / $total_req_filtered;
+            if ($p_prime > 0) {
+                $temp_entropy -= $p_prime * log($p_prime, 2);
+            }
+            
+            // Simpan ke DB untuk audit (Opsional: hanya untuk tracing IP mana saja)
+            $stmt = $conn->prepare("INSERT INTO suspicious_ip (timestamp, ip, request_count, probability) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("ssid", $current_timestamp, $s['ip_address'], $s['request_count'], $p_prime);
+            $stmt->execute();
         }
+        // Gunakan Normalized Entropy untuk Re-evaluasi (NESIP)
+        $normalized_esip = ($n_susip > 1) ? ($temp_entropy / log($n_susip, 2)) : 0;
     }
 }
 
 // ==============================
-// 8. HITUNG THRESHOLD ESIP (DINAMIS)
+// 7. HITUNG THRESHOLD ESIP (dari histori NESIP sebelumnya)
 // ==============================
 $esip_values = [];
-
-$result_esip = $conn->query("SELECT entropy_esip FROM reevaluation_log ORDER BY timestamp DESC LIMIT $N_window");
+// Ambil nilai normalized_esip (yang berisi nilai ternormalisasi dari siklus lalu)
+$result_esip = $conn->query("SELECT normalized_esip FROM reevaluation_log ORDER BY timestamp DESC LIMIT $N_window");
 
 while ($row = $result_esip->fetch_assoc()) {
-    $esip_values[] = $row['entropy_esip'];
+    $esip_values[] = $row['normalized_esip']; // Pastikan key sesuai hasil query
 }
 
 $mean_esip = 0;
@@ -146,44 +125,45 @@ $threshold_esip = 0;
 
 if (count($esip_values) >= 2) {
     $mean_esip = array_sum($esip_values) / count($esip_values);
-
-    $variance = 0;
-    foreach ($esip_values as $val) {
-        $variance += pow($val - $mean_esip, 2);
-    }
-
-    $stddev_esip = sqrt($variance / count($esip_values));
-
-    // pakai k_dynamic yang sama dari tahap awal
+    $sum_sq = 0;
+    foreach ($esip_values as $val) { $sum_sq += pow($val - $mean_esip, 2); }
+    $stddev_esip = sqrt($sum_sq / count($esip_values));
+    
     $threshold_esip = $mean_esip - ($k_dynamic * $stddev_esip);
 } else {
-    $threshold_esip = -1; //jika data kurang, set threshold negatif agar tidak mempengaruhi klasifikasi
+    $threshold_esip = 0.5; //default threshold jika history belum cukup (how do i decide this)
 }
 
 // ==============================
-// 9. FINAL DECISION
+// 8. FINAL DECISION
 // ==============================
 $final_result = $result_status;
 
-// hanya reevaluate jika ada SUSIP
-if (!empty($susip) && $entropy_esip > 0) {
-
-    if ($entropy_esip < $threshold_esip) {
+if ($result_status == "SUS") {
+    // Bandingkan NE saat ini dengan Threshold Re-evaluasi
+    if ($normalized_esip < $threshold_esip) {
         $final_result = "ATTACK";
     } else {
-        $final_result = "NORMAL";
+        // Jika NE tinggi (mendekati 1), berarti distribusi IP merata (Normal/Flash Crowd)
+        $final_result = "NORMAL"; 
     }
 }
 
+// Tampilkan hasil tahap 2 jika masuk ke re-evaluasi
+if ($result_status == "SUS") {
+    echo "TAHAP 2: ESIP: $normalized_esip | ThresESIP: $threshold_esip | FINAL: $final_result\n";
+}
+echo "--------------------------------------------------------------------------\n";
+
 // ==============================
-// 10. SIMPAN REEVALUATION
+// 9. SIMPAN REEVALUATION
 // ==============================
 $stmt = $conn->prepare("
     INSERT INTO reevaluation_log 
-    (timestamp, entropy_esip, mean_esip, stddev_esip, threshold_esip, final_result) 
+    (timestamp, normalized_esip, mean_esip, stddev_esip, threshold_esip, final_result) 
     VALUES (?, ?, ?, ?, ?, ?)
 ");
-$stmt->bind_param("sdddds", $current_timestamp, $entropy_esip, $mean_esip, $stddev_esip, $threshold_esip, $final_result);
+$stmt->bind_param("sdddds", $current_timestamp, $normalized_esip, $mean_esip, $stddev_esip, $threshold_esip, $final_result);
 $stmt->execute();
 
 // update hasil klasifikasi final
