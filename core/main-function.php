@@ -70,10 +70,11 @@ $stmt->execute();
 
 // 5. KLASIFIKASI
 $result_status = ($normalized_entropy < $threshold) ? "SUS" : "NORMAL";
+$delta = $normalized_entropy - $threshold;
 
 // Simpan Hasil Klasifikasi
-$stmt = $conn->prepare("INSERT INTO classification (timestamp, normalized_entropy, threshold, result) VALUES (?, ?, ?, ?)");
-$stmt->bind_param("sdds", $current_timestamp, $normalized_entropy, $threshold, $result_status);
+$stmt = $conn->prepare("INSERT INTO classification (timestamp, normalized_entropy, threshold, delta, result) VALUES (?, ?, ?, ?, ?)");
+$stmt->bind_param("sddds", $current_timestamp, $normalized_entropy, $threshold, $delta, $result_status);
 $stmt->execute();
 
 echo "TAHAP 1: $current_timestamp | NE: $normalized_entropy | Thres: $threshold | Status: $result_status\n";
