@@ -1,6 +1,6 @@
 <?php
 $host = "localhost";
-$user = "safina-user";
+$user = "root";
 $pass = "pass"; // sesuaikan
 $db   = "ddos_detection"; // sesuaikan nama database kamu
 
