@@ -72,10 +72,24 @@ $stmt->execute();
 $result_status = ($normalized_entropy < $threshold) ? "SUS" : "NORMAL";
 $delta = $normalized_entropy - $threshold;
 
-// Simpan Hasil Klasifikasi
-$stmt = $conn->prepare("INSERT INTO classification (timestamp, normalized_entropy, threshold, delta, result) VALUES (?, ?, ?, ?, ?)");
-$stmt->bind_param("sddds", $current_timestamp, $normalized_entropy, $threshold, $delta, $result_status);
+// Simpan Hasil Klasifikasi tahap 1
+$stmt = $conn->prepare("
+INSERT INTO classification 
+(timestamp, normalized_entropy, threshold, delta, result, final_result) 
+VALUES (?, ?, ?, ?, ?, ?)
+");
+
+$stmt->bind_param("sddsss", 
+    $current_timestamp, 
+    $normalized_entropy, 
+    $threshold, 
+    $delta, 
+    $result_status,
+    $result_status // default dulu
+);
+
 $stmt->execute();
+$inserted_id = $conn->insert_id;
 
 echo "TAHAP 1: $current_timestamp | NE: $normalized_entropy | Thres: $threshold | Status: $result_status\n";
 
@@ -86,10 +100,20 @@ $normalized_esip = 0;
 $filtered_susip = [];
 
 if ($result_status == "SUS") {
-    // Ambil SEMUA IP dari window yang terdeteksi SUS
-    $filtered_susip = $data; 
+    // 1. Hitung rata-rata request per IP dalam window ini
+    $avg_req = $total_requests / $n;
+    
+    $filtered_susip = [];
+    $total_req_filtered = 0;
+
+    foreach ($data as $row) {
+        // Hanya ambil IP yang requestnya di atas rata-rata (Potensi Attacker)
+        if ($row['request_count'] > $avg_req) {
+            $filtered_susip[] = $row;
+            $total_req_filtered += $row['request_count'];
+        }
+    }
     $n_susip = count($filtered_susip);
-    $total_req_filtered = $total_requests; // Karena mengambil semua data dari window tsb
 
     if ($n_susip > 0) {
         $temp_entropy = 0;
@@ -168,9 +192,15 @@ $stmt->bind_param("sdddds", $current_timestamp, $normalized_esip, $mean_esip, $s
 $stmt->execute();
 
 // update hasil klasifikasi final
-$stmt = $conn->prepare("UPDATE classification SET result = ? WHERE timestamp = ?");
-$stmt->bind_param("ss", $final_result, $current_timestamp);
-$stmt->execute();
+if ($result_status == "SUS") {
+    $stmt = $conn->prepare("
+        UPDATE classification 
+        SET final_result = ? 
+        WHERE id = ?
+    ");
+    $stmt->bind_param("si", $final_result, $inserted_id);
+    $stmt->execute();
+}
 
 $conn->close();
 ?>
