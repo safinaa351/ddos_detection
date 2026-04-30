@@ -1,5 +1,6 @@
 const ctx1 = document.getElementById('chartStage1').getContext('2d');
 const ctx2 = document.getElementById('chartStage2').getContext('2d');
+const ctx3 = document.getElementById('chartSystem').getContext('2d');
 
 const MAX_POINTS = 30;
 
@@ -61,6 +62,40 @@ let chart2 = new Chart(ctx2, {
                 data: [], 
                 borderColor: 'orange', 
                 borderDash: [5, 5], 
+                fill: false,
+                tension: 0.3
+            }
+        ]
+    }
+});
+
+// chart 3 cpu & ram
+let chart3 = new Chart(ctx3, {
+    type: 'line',
+    options: {
+        responsive: true,
+        animation: { duration: 300 },
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100
+            }
+        }
+    },
+    data: {
+        labels: [],
+        datasets: [
+            {
+                label: 'CPU (%)',
+                data: [],
+                borderColor: 'green',
+                fill: false,
+                tension: 0.3
+            },
+            {
+                label: 'RAM (%)',
+                data: [],
+                borderColor: 'brown',
                 fill: false,
                 tension: 0.3
             }
@@ -154,6 +189,27 @@ function updateDashboard() {
         }
 
         $("#log-body").html(rows);
+    });
+
+    // cpu dan ram
+    $.getJSON('get_system.php', function(data) {
+
+        let now = new Date().toLocaleTimeString();
+
+        chart3.data.labels.push(now);
+        chart3.data.datasets[0].data.push(data.cpu);
+        chart3.data.datasets[1].data.push(data.ram);
+
+        if(chart3.data.labels.length > MAX_POINTS) {
+            chart3.data.labels.shift();
+            chart3.data.datasets.forEach(ds => ds.data.shift());
+        }
+
+        chart3.update();
+
+        // Optional tampil text
+        $("#cpu-val").text(data.cpu + " %");
+        $("#ram-val").text(data.ram + " %");
     });
 }
 

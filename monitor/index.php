@@ -42,6 +42,28 @@
     </div>
 
     <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    System Monitoring (CPU & RAM)
+                </div>
+                <div class="card-body">
+                    
+                    <!-- Chart -->
+                    <canvas id="chartSystem"></canvas>
+
+                    <!-- Text Info -->
+                    <div class="mt-3 text-center">
+                        <strong>CPU:</strong> <span id="cpu-val">-</span> |
+                        <strong>RAM:</strong> <span id="ram-val">-</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
         <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-header bg-white">Live Suspicious IP Logs (Stage 2)</div>
