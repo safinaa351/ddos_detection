@@ -138,19 +138,16 @@ function updateDashboard() {
         chart1.update();
 
         // ===== STAGE 2 CHART (ONLY IF SUS/ATTACK) =====
-        if(data.final_result !== "NORMAL") {
+        chart2.data.labels.push(time);
+        chart2.data.datasets[0].data.push(data.normalized_esip);
+        chart2.data.datasets[1].data.push(data.threshold_esip);
 
-            chart2.data.labels.push(time);
-            chart2.data.datasets[0].data.push(data.normalized_esip);
-            chart2.data.datasets[1].data.push(data.threshold_esip);
-
-            if(chart2.data.labels.length > MAX_POINTS) {
-                chart2.data.labels.shift();
-                chart2.data.datasets.forEach(ds => ds.data.shift());
-            }
-
-            chart2.update();
+        if(chart2.data.labels.length > MAX_POINTS) {
+            chart2.data.labels.shift();
+            chart2.data.datasets.forEach(ds => ds.data.shift());
         }
+
+        chart2.update();
 
         // ===== UI STATUS =====
         $("#final-verdict").text(data.final_result);

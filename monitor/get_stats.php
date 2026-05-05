@@ -4,7 +4,7 @@ require_once "/home/main/ddos_skripsi/ddos_detection/config.php";
 // Ambil data klasifikasi terbaru join dengan reevaluation
 $query = "SELECT c.*, r.normalized_esip, r.threshold_esip 
           FROM classification c 
-          LEFT JOIN reevaluation_log r ON c.timestamp = r.timestamp 
+          LEFT JOIN reevaluation_log r ON c.id = r.classification_id 
           ORDER BY c.id DESC LIMIT 1";
 
 $result = $conn->query($query);
