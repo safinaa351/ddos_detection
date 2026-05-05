@@ -28,7 +28,7 @@ $normalized_entropy = ($n > 1) ? ($entropy / log($n, 2)) : 0;
 // Simpan Entropy
 $stmt = $conn->prepare("INSERT INTO entropy_log (unique_ip, entropy, normalized_entropy, total_request, timestamp) VALUES (?, ?, ?, ?, ?)");
 $stmt->bind_param("iddis", $n, $entropy, $normalized_entropy, $total_requests, $current_timestamp);
-$stmt->execute();
+$stmt->execute() or die($stmt->error);
 
 // 3. HITUNG DYNAMIC K
 $N_window = 20;
@@ -44,7 +44,7 @@ if ($emax > 0 && $total_requests > 0) {
 // Simpan Dynamic K
 $stmt = $conn->prepare("INSERT INTO dynamic_k (timestamp, emax, ptotal, k_dynamic) VALUES (?, ?, ?, ?)");
 $stmt->bind_param("sddd", $current_timestamp, $emax, $total_requests, $k_dynamic);
-$stmt->execute();
+$stmt->execute() or die($stmt->error);
 
 // 4. HITUNG THRESHOLD
 $result_nev = $conn->query("SELECT normalized_entropy FROM entropy_log ORDER BY timestamp DESC LIMIT $N_window");
@@ -66,7 +66,7 @@ if (count($nev) >= 2) {
 // Simpan Threshold
 $stmt = $conn->prepare("INSERT INTO threshold (timestamp, mean, stddev, k_dynamic, threshold) VALUES (?, ?, ?, ?, ?)");
 $stmt->bind_param("sdddd", $current_timestamp, $mean, $stddev, $k_dynamic, $threshold);
-$stmt->execute();
+$stmt->execute() or die($stmt->error);
 
 // 5. KLASIFIKASI
 $result_status = ($normalized_entropy < $threshold) ? "SUS" : "NORMAL";
@@ -88,7 +88,7 @@ $stmt->bind_param("sddsss",
     $result_status // default dulu
 );
 
-$stmt->execute();
+$stmt->execute() or die($stmt->error);
 $inserted_id = $conn->insert_id;
 
 echo "TAHAP 1: $current_timestamp | NE: $normalized_entropy | Thres: $threshold | Status: $result_status\n";
@@ -126,7 +126,7 @@ if ($result_status == "SUS") {
             // Simpan ke DB untuk audit (Opsional: hanya untuk tracing IP mana saja)
             $stmt = $conn->prepare("INSERT INTO suspicious_ip (timestamp, ip, request_count, probability) VALUES (?, ?, ?, ?)");
             $stmt->bind_param("ssid", $current_timestamp, $s['ip_address'], $s['request_count'], $p_prime);
-            $stmt->execute();
+            $stmt->execute() or die($stmt->error);
         }
         // Gunakan Normalized Entropy untuk Re-evaluasi (NESIP)
         $normalized_esip = ($n_susip > 1) ? ($temp_entropy / log($n_susip, 2)) : 0;
@@ -185,11 +185,11 @@ echo "--------------------------------------------------------------------------
 // ==============================
 $stmt = $conn->prepare("
     INSERT INTO reevaluation_log 
-    (timestamp, normalized_esip, mean_esip, stddev_esip, threshold_esip, final_result) 
+    (classification_id, normalized_esip, mean_esip, stddev_esip, threshold_esip, final_result) 
     VALUES (?, ?, ?, ?, ?, ?)
 ");
-$stmt->bind_param("sdddds", $current_timestamp, $normalized_esip, $mean_esip, $stddev_esip, $threshold_esip, $final_result);
-$stmt->execute();
+$stmt->bind_param("idddds", $inserted_id, $normalized_esip, $mean_esip, $stddev_esip, $threshold_esip, $final_result);
+$stmt->execute() or die($stmt->error);
 
 // update hasil klasifikasi final
 if ($result_status == "SUS") {
@@ -199,7 +199,7 @@ if ($result_status == "SUS") {
         WHERE id = ?
     ");
     $stmt->bind_param("si", $final_result, $inserted_id);
-    $stmt->execute();
+    $stmt->execute() or die($stmt->error);
 }
 
 $conn->close();
