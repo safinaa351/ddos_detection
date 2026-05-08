@@ -91,6 +91,7 @@ $stmt->bind_param("sddsss",
 $stmt->execute() or die($stmt->error);
 $inserted_id = $conn->insert_id;
 
+echo "WINDOW: $current_timestamp | Total Request per Window: $total_requests\n";
 echo "TAHAP 1: $current_timestamp | NE: $normalized_entropy | Thres: $threshold | Status: $result_status\n";
 
 // ==============================
@@ -107,8 +108,8 @@ if ($result_status == "SUS") {
     $total_req_filtered = 0;
 
     foreach ($data as $row) {
-        // Hanya ambil IP yang requestnya di atas rata-rata (Potensi Attacker)
-        if ($row['request_count'] > $avg_req) {
+        // Hanya ambil IP yang requestnya sama atau di atas rata-rata
+        if ($row['request_count'] >= $avg_req) {
             $filtered_susip[] = $row;
             $total_req_filtered += $row['request_count'];
         }
@@ -165,11 +166,17 @@ if (count($esip_values) >= 2) {
 $final_result = $result_status;
 
 if ($result_status == "SUS") {
-    // Bandingkan NE saat ini dengan Threshold Re-evaluasi
-    if ($normalized_esip < $threshold_esip) {
+    // TAMBAHAN: Hitung rasio dominasi SUSIP
+    $susip_dominance_ratio = $total_req_filtered / $total_requests; 
+
+    // Jika SUSIP mendominasi lebih dari 70%
+    if ($susip_dominance_ratio > 0.70) { //this part might getting deleted kalau simulasi langsung
+        $final_result = "ATTACK";
+    } 
+    // Jika tidak mendominasi, baru pakai perbandingan Entropy (ESIP vs Threshold)
+    else if ($normalized_esip < $threshold_esip) {
         $final_result = "ATTACK";
     } else {
-        // Jika NE tinggi (mendekati 1), berarti distribusi IP merata (Normal/Flash Crowd)
         $final_result = "NORMAL"; 
     }
 }
