@@ -1,8 +1,8 @@
 <?php
 $host = "localhost";
 $user = "root";
-$pass = "pass"; // sesuaikan
-$db   = "ddos_detection"; // sesuaikan nama database kamu
+$pass = "pass";
+$db   = "ddos_detection";
 
 $conn = new mysqli($host, $user, $pass, $db);
 
