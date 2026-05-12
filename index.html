@@ -1,113 +1,163 @@
 <!DOCTYPE html>
-
-<html>
-
+<html lang="id">
 <head>
-
-    <title>Login Sistem</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Sistem DDoS</title>
 
     <style>
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+        }
 
         body{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(
+                135deg,
+                #C0E1D2,
+                #E5EEE4,
+                #F6F4E8
+            );
+            height:100vh;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+        }
 
-            font-family: Arial;
-
-            background-color:#f2f2f2;
-
+        .login-container{
+            width:100%;
+            max-width:380px;
+            padding:20px;
         }
 
         .login-box{
-
-            width:300px;
-
-            margin:120px auto;
-
-            padding:20px;
-
-            background:white;
-
-            border-radius:8px;
-
-            box-shadow:0 0 10px rgba(0,0,0,0.1);
-
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(10px);
+            padding:40px 35px;
+            border-radius:22px;
+            box-shadow:
+                0 10px 30px rgba(0,0,0,0.08);
+            border:1px solid rgba(255,255,255,0.4);
         }
 
-        input{
-
-            width:100%;
-
-            padding:8px;
-
-            margin:8px 0;
-
+        .login-header{
+            text-align:center;
+            margin-bottom:30px;
         }
 
-        button{
+        .login-header h1{
+            color:#4F6F65;
+            font-size:30px;
+            margin-bottom:8px;
+        }
 
+        .login-header p{
+            color:#6D7D75;
+            font-size:14px;
+        }
+
+        .input-group{
+            margin-bottom:18px;
+        }
+
+        .input-group label{
+            display:block;
+            margin-bottom:8px;
+            color:#50635B;
+            font-size:14px;
+            font-weight:600;
+        }
+
+        .input-group input{
             width:100%;
-
-            padding:8px;
-
-            background:#3498db;
-
-            color:white;
-
+            padding:13px 14px;
             border:none;
+            border-radius:12px;
+            background:#F6F4E8;
+            font-size:15px;
+            outline:none;
+            transition:0.25s;
+            border:2px solid transparent;
+        }
 
+        .input-group input:focus{
+            border-color:#9BC7B3;
+            background:white;
+            box-shadow:0 0 0 4px rgba(192,225,210,0.4);
+        }
+
+        .login-btn{
+            width:100%;
+            padding:13px;
+            border:none;
+            border-radius:12px;
+            background:#7FB7A1;
+            color:white;
+            font-size:15px;
+            font-weight:600;
             cursor:pointer;
-
+            transition:0.25s;
+            margin-top:10px;
         }
 
-        button:hover{
-
-            background:#2980b9;
-
+        .login-btn:hover{
+            background:#689C88;
+            transform:translateY(-1px);
         }
 
+        .footer-text{
+            margin-top:22px;
+            text-align:center;
+            font-size:12px;
+            color:#7A8A83;
+        }
+
+        @media(max-width:480px){
+            .login-box{
+                padding:30px 25px;
+            }
+        }
     </style>
-
 </head>
-
-
 
 <body>
 
+    <div class="login-container">
 
+        <div class="login-box">
 
-<div class="login-box">
+            <div class="login-header">
+                <h1>Login</h1>
+                <p>Sistem Monitoring & Deteksi DDoS</p>
+            </div>
 
-<h2>Login</h2>
+            <form action="login.php" method="POST">
 
+                <div class="input-group">
+                    <label>Username</label>
+                    <input type="text" name="username" placeholder="Masukkan username" required>
+                </div>
 
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="Masukkan password" required>
+                </div>
 
-<form action="login.php" method="POST">
+                <button type="submit" class="login-btn">
+                    Masuk
+                </button>
 
+            </form>
 
+            <div class="footer-text">
+                DDoS Detection System
+            </div>
 
-<label>Username</label>
+        </div>
 
-<input type="text" name="username" required>
-
-
-
-<label>Password</label>
-
-<input type="password" name="password" required>
-
-
-
-<button type="submit">Login</button>
-
-
-
-</form>
-
-
-
-</div>
-
-
+    </div>
 
 </body>
-
 </html>

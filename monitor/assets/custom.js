@@ -170,11 +170,19 @@ function updateDashboard() {
     // ===== LOGS =====
     $.getJSON('get_logs.php', function(data) {
 
-        let rows = '';
+        // ==============================
+        // 1. ACTIVE ATTACKERS (UNIQUE)
+        // ==============================
+        let activeRows = '';
 
-        if(data.length > 0) {
-            data.forEach(log => {
-                rows += `<tr>
+        if(data.active.length > 0) {
+            data.active.forEach(log => {
+
+                let rowClass = "";
+                if(log.probability > 0.9) rowClass = "table-danger";
+                else if(log.probability > 0.5) rowClass = "table-warning";
+
+                activeRows += `<tr class="${rowClass}">
                     <td>${log.timestamp}</td>
                     <td>${log.ip}</td>
                     <td>${log.request_count}</td>
@@ -182,10 +190,36 @@ function updateDashboard() {
                 </tr>`;
             });
         } else {
-            rows = '<tr><td colspan="4" class="text-center text-muted">No suspicious IP detected</td></tr>';
+            activeRows = '<tr><td colspan="4" class="text-center text-muted">No active attackers</td></tr>';
         }
 
-        $("#log-body").html(rows);
+        $("#active-log-body").html(activeRows);
+
+
+        // ==============================
+        // 2. LIVE FEED (RAW)
+        // ==============================
+        let liveRows = '';
+
+        if(data.live.length > 0) {
+            data.live.forEach(log => {
+
+                let rowClass = "";
+                if(log.probability > 0.9) rowClass = "table-danger";
+                else if(log.probability > 0.5) rowClass = "table-warning";
+
+                liveRows += `<tr class="${rowClass}">
+                    <td>${log.timestamp}</td>
+                    <td>${log.ip}</td>
+                    <td>${log.request_count}</td>
+                    <td>${log.probability_fmt}</td>
+                </tr>`;
+            });
+        } else {
+            liveRows = '<tr><td colspan="4" class="text-center text-muted">No logs</td></tr>';
+        }
+
+        $("#live-log-body").html(liveRows);
     });
 
     // cpu dan ram

@@ -64,9 +64,14 @@
     </div>
 
     <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white">Live Suspicious IP Logs (Stage 2)</div>
+        <!-- ============================== -->
+        <!-- ACTIVE ATTACKERS -->
+        <!-- ============================== -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    Active Attackers (Latest per IP)
+                </div>
                 <div class="card-body p-0">
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
@@ -77,7 +82,31 @@
                                 <th>Prob</th>
                             </tr>
                         </thead>
-                        <tbody id="log-body"></tbody>
+                        <tbody id="active-log-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================== -->
+        <!-- LIVE FEED -->
+        <!-- ============================== -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    Live Suspicious IP Logs (Raw)
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>IP Address</th>
+                                <th>Req Count</th>
+                                <th>Prob</th>
+                            </tr>
+                        </thead>
+                        <tbody id="live-log-body"></tbody>
                     </table>
                 </div>
             </div>
