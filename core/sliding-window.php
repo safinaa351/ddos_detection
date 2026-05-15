@@ -3,8 +3,6 @@ require_once "../config.php";
 
 $window_size = 30;
 
-$now = date("Y-m-d H:i:s");
-
 $query = "
 SELECT ip_address, COUNT(*) as request_count
 FROM raw_traffic
@@ -20,5 +18,8 @@ while ($row = $result->fetch_assoc()) {
     $data[] = $row;
 }
 
-return $data;
+return [
+    'window_size' => $window_size,
+    'data' => $data
+];
 ?>
