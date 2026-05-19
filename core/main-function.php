@@ -1,24 +1,20 @@
 <?php
 require_once "../config.php";
+require_once "sliding-window.php";
 date_default_timezone_set('Asia/Jakarta');
 $current_timestamp = date("Y-m-d H:i:s");
 
 // 0. AMBIL DATA SLIDING WINDOW
-$window = include "sliding-window.php";
+$window = getSlidingWindow($conn);
 
 $window_size = $window['window_size'];
 $data = $window['data'];
-
-$total_requests = 0;
-foreach ($data as $row) {
-    $total_requests += $row['request_count'];
-}
+$total_requests = $window['total_requests'];
+$n = $window['unique_ip'];
 
 if ($total_requests == 0) {
     die("No data in this window\n");
 }
-
-$n = count($data);
 
 // ==============================
 // 1. BUAT WINDOW RECORD
