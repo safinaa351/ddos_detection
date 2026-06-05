@@ -1,6 +1,8 @@
 <?php
+$start_time = microtime(true);
 require_once "../config.php";
 require_once "sliding-window.php";
+require_once "save-performance-log.php";
 date_default_timezone_set('Asia/Jakarta');
 $current_timestamp = date("Y-m-d H:i:s");
 
@@ -78,6 +80,13 @@ if (count($nev) >= $N_window) {
     $threshold = $mean - ($k_dynamic * $stddev);
 } else {
     echo "Collecting baseline... (" . count($nev) . "/$N_window)\n";
+    savePerformanceLog(
+        $conn,
+        $window_id,
+        $current_timestamp,
+        $start_time
+    );
+    $conn->close();
     exit;
 }
 
@@ -156,36 +165,33 @@ if ($result_status == "SUS") {
         $normalized_esip = ($n_susip > 1) ? ($entropy_esip / log($n_susip, 2)) : 0;
     }
 
-    // ==============================
     // 7. HITUNG THRESHOLD ESIP (dari histori NESIP sebelumnya)
-    // ==============================
-    $esip_values = [];
-    // Ambil nilai normalized_esip (yang berisi nilai ternormalisasi dari siklus lalu)
-    $result_esip = $conn->query("SELECT normalized_esip FROM reevaluation_log ORDER BY timestamp DESC LIMIT $N_window");
+    $nesip_values = [];
+    $result_nesip = $conn->query("SELECT normalized_esip FROM reevaluation_log ORDER BY timestamp DESC LIMIT $N_window");
 
-    while ($row = $result_esip->fetch_assoc()) {
-        $esip_values[] = $row['normalized_esip']; // Pastikan key sesuai hasil query
+    while ($row = $result_nesip->fetch_assoc()) {
+        $nesip_values[] = $row['normalized_esip'];
     }
 
-    $mean_esip = 0;
-    $stddev_esip = 0;
-    $threshold_esip = 0;
+    $mean_nesip = 0;
+    $stddev_nesip = 0;
+    $threshold_nesip = 0;
 
-    if (count($esip_values) >= $N_window) {
-        $mean_esip = array_sum($esip_values) / count($esip_values);
+    if (count($nesip_values) >= $N_window) {
+        $mean_nesip = array_sum($nesip_values) / count($nesip_values);
         $sum_sq = 0;
-        foreach ($esip_values as $val) { $sum_sq += pow($val - $mean_esip, 2); }
-        $stddev_esip = sqrt($sum_sq / count($esip_values));
+        foreach ($nesip_values as $val) { $sum_sq += pow($val - $mean_nesip, 2); }
+        $stddev_nesip = sqrt($sum_sq / count($nesip_values));
         
-        $threshold_esip = $mean_esip - ($k_dynamic * $stddev_esip);
+        $threshold_nesip = $mean_nesip - ($k_dynamic * $stddev_nesip);
     } else {
-        $threshold_esip = 0.5; //default threshold jika history belum cukup (how do i decide this)
+        $threshold_nesip = 0.5;
     }
 
     // ==============================
     // 8. FINAL DECISION
     // ==============================
-    if ($normalized_esip < $threshold_esip) {
+    if ($normalized_esip < $threshold_nesip) {
         $final_result = "ATTACK";
         include "send-telegram.php";
     } else {
@@ -193,7 +199,7 @@ if ($result_status == "SUS") {
     }
 
     // Tampilkan hasil tahap 2 jika masuk ke re-evaluasi
-    echo "TAHAP 2: NESIP: $normalized_esip | ThresESIP: $threshold_esip | FINAL: $final_result\n";
+    echo "TAHAP 2: NESIP: $normalized_esip | ThresNESIP: $threshold_nesip | FINAL: $final_result\n";
     echo "--------------------------------------------------------------------------\n";
 
     // ==============================
@@ -201,10 +207,10 @@ if ($result_status == "SUS") {
     // ==============================
     $stmt = $conn->prepare("
         INSERT INTO reevaluation_log 
-        (classification_id, entropy_esip, normalized_esip, mean_esip, stddev_esip, threshold_esip, final_result) 
+        (classification_id, entropy_esip, normalized_esip, mean_nesip, stddev_nesip, threshold_nesip, final_result) 
         VALUES (?, ?, ?, ?, ?, ?, ?)
     ");
-    $stmt->bind_param("iddddds", $inserted_id, $entropy_esip, $normalized_esip, $mean_esip, $stddev_esip, $threshold_esip, $final_result);
+    $stmt->bind_param("iddddds", $inserted_id, $entropy_esip, $normalized_esip, $mean_nesip, $stddev_nesip, $threshold_nesip, $final_result);
     $stmt->execute() or die($stmt->error);
 
     // update hasil klasifikasi final
@@ -217,5 +223,12 @@ if ($result_status == "SUS") {
     $stmt->execute() or die($stmt->error);
 }
 
+// performance log (lama proses 1x iterasi main-function dalam microsecond)
+savePerformanceLog(
+    $conn,
+    $window_id,
+    $current_timestamp,
+    $start_time
+);
 $conn->close();
 ?>

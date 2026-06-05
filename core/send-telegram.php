@@ -20,7 +20,7 @@ $message = "
 *Threshold:* $threshold
 
 *NESIP:* $normalized_esip
-*Threshold ESIP:* $threshold_esip
+*Threshold NESIP:* $threshold_nesip
 
 *Suspicious IPs:*
 $susip_text
