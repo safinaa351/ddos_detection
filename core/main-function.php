@@ -200,7 +200,6 @@ if ($result_status == "SUS") {
 
     // Tampilkan hasil tahap 2 jika masuk ke re-evaluasi
     echo "TAHAP 2: NESIP: $normalized_esip | ThresNESIP: $threshold_nesip | FINAL: $final_result\n";
-    echo "--------------------------------------------------------------------------\n";
 
     // ==============================
     // 9. SIMPAN REEVALUATION
@@ -230,5 +229,6 @@ savePerformanceLog(
     $current_timestamp,
     $start_time
 );
+echo "--------------------------------------------------------------------------\n";
 $conn->close();
 ?>
