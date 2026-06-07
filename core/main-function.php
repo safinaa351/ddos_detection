@@ -191,7 +191,10 @@ if ($result_status == "SUS") {
     // ==============================
     // 8. FINAL DECISION
     // ==============================
-    if ($normalized_esip < $threshold_nesip) {
+    if ($n_susip <= 1) {
+        $final_result = "NORMAL"; //penanganan khusus untuk kasus hanya ada 1 atau 0 SUSIP, karena NESIP tidak valid untuk n <= 1
+    }
+    else if ($normalized_esip < $threshold_nesip) {
         $final_result = "ATTACK";
         include "send-telegram.php";
     } else {
@@ -204,13 +207,15 @@ if ($result_status == "SUS") {
     // ==============================
     // 9. SIMPAN REEVALUATION
     // ==============================
-    $stmt = $conn->prepare("
-        INSERT INTO reevaluation_log 
-        (window_id, timestamp, entropy_esip, normalized_esip, mean_nesip, stddev_nesip, threshold_nesip, final_result) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ");
-    $stmt->bind_param("isddddds", $window_id, $current_timestamp, $entropy_esip, $normalized_esip, $mean_nesip, $stddev_nesip, $threshold_nesip, $final_result);
-    $stmt->execute() or die($stmt->error);
+    if ($n_susip > 1) { //hanya simpan jika n_susip > 1 agar nilai esip & nesip 0 (tidak valid + ganggu perhitungan threship)
+        $stmt = $conn->prepare("
+            INSERT INTO reevaluation_log 
+            (window_id, timestamp, entropy_esip, normalized_esip, mean_nesip, stddev_nesip, threshold_nesip, final_result) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->bind_param("isddddds", $window_id, $current_timestamp, $entropy_esip, $normalized_esip, $mean_nesip, $stddev_nesip, $threshold_nesip, $final_result);
+        $stmt->execute() or die($stmt->error);
+    }
 
     // update hasil klasifikasi final
     $stmt = $conn->prepare("
