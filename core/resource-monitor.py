@@ -3,8 +3,8 @@ import psutil
 import pandas as pd
 from datetime import datetime
 
-OUTPUT_FILE = "test_cpu_normal.csv" # jangan lupa ubah nama file sesuai skenario (normal,flashcrowd, serangan)
-DURATION = 330  # 6 menit, lama pengambilan data lebih banyak 1 menit dari pengujian (5 menit)
+OUTPUT_FILE = "log_cpu_fc.csv" # jangan lupa ubah nama file sesuai skenario (normal,flashcrowd, serangan)
+DURATION = 360  # 6 menit, lama pengambilan data lebih banyak 1 menit dari pengujian (5 menit)
 
 data_log = []
 

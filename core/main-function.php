@@ -206,10 +206,10 @@ if ($result_status == "SUS") {
     // ==============================
     $stmt = $conn->prepare("
         INSERT INTO reevaluation_log 
-        (classification_id, entropy_esip, normalized_esip, mean_nesip, stddev_nesip, threshold_nesip, final_result) 
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (window_id, timestamp, entropy_esip, normalized_esip, mean_nesip, stddev_nesip, threshold_nesip, final_result) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    $stmt->bind_param("iddddds", $inserted_id, $entropy_esip, $normalized_esip, $mean_nesip, $stddev_nesip, $threshold_nesip, $final_result);
+    $stmt->bind_param("isddddds", $window_id, $current_timestamp, $entropy_esip, $normalized_esip, $mean_nesip, $stddev_nesip, $threshold_nesip, $final_result);
     $stmt->execute() or die($stmt->error);
 
     // update hasil klasifikasi final
