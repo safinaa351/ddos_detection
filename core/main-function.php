@@ -185,7 +185,7 @@ if ($result_status == "SUS") {
         
         $threshold_nesip = $mean_nesip - ($k_dynamic * $stddev_nesip);
     } else {
-        $threshold_nesip = 0.5;
+        $threshold_nesip = 0.962; //dihitung dari avg nesip pada skenario normal & fc, hanya berfungsi jika sistem cold start though
     }
 
     // ==============================
